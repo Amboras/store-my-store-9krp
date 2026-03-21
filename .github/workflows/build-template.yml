@@ -43,11 +43,9 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           echo "Uploading storefront template to Fly volume..."
-          cat storefront-template.tar.gz | flyctl ssh console \
-            --app amboras-orchestrator \
-            -C "cat > /app/workspaces/storefront-template.tar.gz"
+          flyctl ssh sftp shell --app amboras-orchestrator <<EOF
+          put storefront-template.tar.gz /app/workspaces/storefront-template.tar.gz
+          EOF
           echo "Verifying upload..."
-          flyctl ssh console \
-            --app amboras-orchestrator \
-            -C "ls -lh /app/workspaces/storefront-template.tar.gz"
+          flyctl ssh console --app amboras-orchestrator -C "ls -lh /app/workspaces/storefront-template.tar.gz"
           echo "✅ Template uploaded to Fly volume"
