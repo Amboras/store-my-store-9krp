@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useCheckout, CheckoutStep, ShippingAddress } from '@/hooks/use-checkout'
 import { ShoppingBag, ChevronRight, Loader2, Check, ArrowLeft, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { StripePaymentForm } from '@/components/checkout/stripe-payment-form'
 
 const steps: { key: CheckoutStep; label: string }[] = [
   { key: 'info', label: 'Information' },
@@ -26,7 +27,7 @@ export default function CheckoutPage() {
   const {
     step, setStep, cart, shippingOptions, loadingShipping,
     setContactAndAddress, setShippingMethod, completeCheckout,
-    isUpdating, error, clearError,
+    isUpdating, error, clearError, paymentSession, stripeConfig,
   } = useCheckout()
 
   const [email, setEmail] = useState('')
@@ -264,11 +265,33 @@ export default function CheckoutPage() {
 
                 <section>
                   <h2 className="text-xs uppercase tracking-widest font-semibold mb-4">Payment</h2>
-                  <div className="border rounded-sm p-6">
-                    <p className="text-sm text-muted-foreground">
-                      This is a demo store. Orders are placed using the system payment provider — no real payment is processed.
-                    </p>
-                  </div>
+                  {stripeConfig.paymentReady && paymentSession?.client_secret && stripeConfig.publishableKey ? (
+                    <StripePaymentForm
+                      clientSecret={paymentSession.client_secret}
+                      stripeAccountId={paymentSession.stripe_account_id}
+                      publishableKey={stripeConfig.publishableKey}
+                      isCompletingOrder={isUpdating}
+                      onPaymentSuccess={async () => {
+                        const order = await completeCheckout()
+                        if (order) {
+                          toast.success('Order placed successfully!')
+                          router.push(`/checkout/success?order=${order.id}`)
+                        }
+                      }}
+                      onError={(msg) => { clearError(); toast.error(msg) }}
+                    />
+                  ) : isUpdating && stripeConfig.paymentReady ? (
+                    <div className="border rounded-sm p-6 flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Initializing payment...</span>
+                    </div>
+                  ) : (
+                    <div className="border rounded-sm p-6">
+                      <p className="text-sm text-muted-foreground">
+                        This is a demo store. Orders are placed using the system payment provider — no real payment is processed.
+                      </p>
+                    </div>
+                  )}
                 </section>
 
                 <div className="flex gap-3">
@@ -280,14 +303,17 @@ export default function CheckoutPage() {
                     <ArrowLeft className="h-4 w-4" />
                     Back
                   </button>
-                  <button
-                    onClick={handlePlaceOrder}
-                    disabled={isUpdating}
-                    className="flex-1 bg-foreground text-background py-3.5 text-sm font-semibold uppercase tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Place Order
-                  </button>
+                  {/* Only show Place Order button for system provider (non-Stripe) */}
+                  {!stripeConfig.paymentReady && (
+                    <button
+                      onClick={handlePlaceOrder}
+                      disabled={isUpdating}
+                      className="flex-1 bg-foreground text-background py-3.5 text-sm font-semibold uppercase tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Place Order
+                    </button>
+                  )}
                 </div>
               </div>
             )}

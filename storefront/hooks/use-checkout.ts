@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { medusaClient } from '@/lib/medusa-client'
 import { useCart } from './use-cart'
+import { useStripeConfig } from './use-stripe-config'
 
 export type CheckoutStep = 'info' | 'shipping' | 'payment' | 'review'
 
@@ -18,12 +19,20 @@ export interface ShippingAddress {
   phone?: string
 }
 
+export interface PaymentSession {
+  client_secret: string
+  stripe_account_id: string
+}
+
 export function useCheckout() {
   const { cart } = useCart()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<CheckoutStep>('info')
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null)
+
+  const stripeConfig = useStripeConfig()
 
   // Fetch shipping options for the cart
   const { data: shippingOptions, isLoading: loadingShipping } = useQuery({
@@ -78,22 +87,63 @@ export function useCheckout() {
     }
   }
 
-  // Step 3: Complete cart → create order
+  // Initialize payment session when entering payment step
+  const initializePayment = async () => {
+    if (!cart?.id) return
+    setIsUpdating(true)
+    setError(null)
+
+    try {
+      const useStripe = stripeConfig.paymentReady
+      const providerId = useStripe
+        ? 'pp_stripe-connect_stripe-connect'
+        : 'pp_system_default'
+
+      const response = await medusaClient.store.payment.initiatePaymentSession(cart, {
+        provider_id: providerId,
+      })
+
+      // Extract payment session data from response
+      const sessions = (response as any)?.payment_collection?.payment_sessions
+      const session = sessions?.find?.((s: any) => s.provider_id === providerId)
+
+      if (useStripe && session?.data?.client_secret) {
+        setPaymentSession({
+          client_secret: session.data.client_secret,
+          stripe_account_id: session.data.stripe_account_id || stripeConfig.stripeAccountId || '',
+        })
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to initialize payment')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // Auto-initialize payment when entering payment step
+  useEffect(() => {
+    if (step === 'payment' && cart?.id && !paymentSession) {
+      initializePayment()
+    }
+  }, [step, cart?.id])
+
+  // Complete checkout (called after Stripe confirms payment, or directly for system provider)
   const completeCheckout = async () => {
     if (!cart?.id) return null
     setIsUpdating(true)
     setError(null)
 
     try {
-      // Initialize payment with manual provider (system payment)
-      await medusaClient.store.payment.initiatePaymentSession(cart, {
-        provider_id: 'pp_system_default',
-      })
+      // For system provider (no Stripe), init payment first
+      if (!stripeConfig.paymentReady) {
+        await medusaClient.store.payment.initiatePaymentSession(cart, {
+          provider_id: 'pp_system_default',
+        })
+      }
 
       const result = await medusaClient.store.cart.complete(cart.id)
 
       if (result?.type === 'order') {
-        // Clear cart from local storage
         if (typeof window !== 'undefined') {
           localStorage.removeItem('medusa_cart_id')
         }
@@ -123,5 +173,7 @@ export function useCheckout() {
     isUpdating,
     error,
     clearError: () => setError(null),
+    paymentSession,
+    stripeConfig,
   }
 }
