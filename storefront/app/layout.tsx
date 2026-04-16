@@ -30,10 +30,10 @@ const body = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Store — Modern Commerce',
-    template: '%s | Store',
+    default: 'Modern Novo — Modern Commerce',
+    template: '%s | Modern Novo',
   },
-  description: 'Discover curated products crafted with care. A modern ecommerce experience.',
+  description: 'Discover a variety of curated products at Modern Novo. Your modern dropshipping destination.',
 }
 
 export default function RootLayout({
