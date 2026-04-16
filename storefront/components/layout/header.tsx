@@ -92,16 +92,18 @@ export default function Header() {
               <Link href="/products" className="text-sm tracking-wide uppercase link-underline py-1" prefetch={true}>
                 Shop All
               </Link>
-              {collections?.slice(0, 4).map((collection: any) => (
-                <Link
-                  key={collection.id}
-                  href={`/collections/${collection.handle}`}
-                  className="text-sm tracking-wide uppercase link-underline py-1"
-                  prefetch={true}
-                >
-                  {collection.title}
-                </Link>
-              ))}
+              <Link href="/products?sort=best_sellers" className="text-sm tracking-wide uppercase link-underline py-1" prefetch={true}>
+                Best Sellers
+              </Link>
+              <Link href="/products?sort=new_arrivals" className="text-sm tracking-wide uppercase link-underline py-1" prefetch={true}>
+                New Arrivals
+              </Link>
+              <Link href="/collections" className="text-sm tracking-wide uppercase link-underline py-1" prefetch={true}>
+                Catalogues
+              </Link>
+              <Link href="/products?sort=sale" className="text-sm tracking-wide uppercase link-underline py-1 text-red-500 font-semibold" prefetch={true}>
+                Sale
+              </Link>
             </nav>
 
             {/* Actions */}
@@ -171,6 +173,38 @@ export default function Header() {
                 prefetch={true}
               >
                 Shop All
+              </Link>
+              <Link
+                href="/products?sort=best_sellers"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block py-3 text-lg tracking-wide border-b border-border/50"
+                prefetch={true}
+              >
+                Best Sellers
+              </Link>
+              <Link
+                href="/products?sort=new_arrivals"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block py-3 text-lg tracking-wide border-b border-border/50"
+                prefetch={true}
+              >
+                New Arrivals
+              </Link>
+              <Link
+                href="/collections"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block py-3 text-lg tracking-wide border-b border-border/50"
+                prefetch={true}
+              >
+                Catalogues
+              </Link>
+              <Link
+                href="/products?sort=sale"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block py-3 text-lg tracking-wide border-b border-border/50 text-red-500 font-semibold"
+                prefetch={true}
+              >
+                Sale
               </Link>
               {collections?.map((collection: any) => (
                 <Link
